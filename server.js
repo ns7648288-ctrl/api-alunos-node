@@ -22,27 +22,38 @@ db.connect((err) => {
 app.post('/alunos', (req, res) => {
     const { nome, email, nota1, nota2 } = req.body;
 
-    if (!nome) return res.status(400).json({ erro: "O nome é obrigatório." });
-    if (!email) return res.status(400).json({ erro: "O email é obrigatório." });
-    if (nota1 === undefined) return res.status(400).json({ erro: "A nota 1 é obrigatória." });
-    if (nota2 === undefined) return res.status(400).json({ erro: "A nota 2 é obrigatória." });
+    if (!nome || !email || nota1 === undefined || nota2 === undefined) {
+        return res.status(400).json({
+            erro: 'nome, email, nota1 e nota2 são obrigatórios'
+        });
+    }
 
     if (typeof nota1 !== 'number' || typeof nota2 !== 'number') {
-        return res.status(400).json({ erro: "As notas devem ser valores numéricos." });
+        return res.status(400).json({
+            erro: 'As notas devem ser valores numéricos'
+        });
     }
 
     if (nota1 < 0 || nota1 > 10 || nota2 < 0 || nota2 > 10) {
-        return res.status(400).json({ erro: "As notas devem estar entre 0 e 10." });
+        return res.status(400).json({
+            erro: 'As notas devem estar entre 0 e 10'
+        });
     }
 
     const notaFinal = nota1 + nota2;
     const status = notaFinal >= 7 ? 'Aprovado' : 'Reprovado';
 
-    const sql = 'INSERT INTO alunos (nome, email, nota1, nota2, notaFinal, status) VALUES (?, ?, ?, ?, ?, ?)';
+    const sql = `
+        INSERT INTO alunos 
+        (nome, email, nota1, nota2, notaFinal, status) 
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
 
     db.query(sql, [nome, email, nota1, nota2, notaFinal, status], (err, result) => {
         if (err) {
-            return res.status(500).json({ erro: "Erro ao salvar o aluno no banco de dados." });
+            return res.status(500).json({
+                erro: 'Erro ao salvar o aluno no banco de dados'
+            });
         }
 
         res.status(201).json({
@@ -55,32 +66,39 @@ app.post('/alunos', (req, res) => {
 });
 
 app.get('/alunos', (req, res) => {
-    const sql = 'SELECT * FROM alunos';
+    const id = req.query.id;
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            return res.status(500).json({ erro: "Erro ao buscar alunos." });
-        }
+    if (id) {
+        const sql = 'SELECT * FROM alunos WHERE id = ?';
 
-        res.status(200).json(results);
-    });
-});
+        db.query(sql, [id], (err, results) => {
+            if (err) {
+                return res.status(500).json({
+                    erro: 'Erro ao buscar o aluno'
+                });
+            }
 
-app.get('/alunos/:id', (req, res) => {
-    const { id } = req.params;
-    const sql = 'SELECT * FROM alunos WHERE id = ?';
+            if (results.length === 0) {
+                return res.status(404).json({
+                    erro: 'Aluno não encontrado'
+                });
+            }
 
-    db.query(sql, [id], (err, results) => {
-        if (err) {
-            return res.status(500).json({ erro: "Erro ao buscar o aluno." });
-        }
+            res.status(200).json(results[0]);
+        });
+    } else {
+        const sql = 'SELECT * FROM alunos';
 
-        if (results.length === 0) {
-            return res.status(404).json({ erro: "Aluno não encontrado." });
-        }
+        db.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).json({
+                    erro: 'Erro ao buscar alunos'
+                });
+            }
 
-        res.status(200).json(results[0]);
-    });
+            res.status(200).json(results);
+        });
+    }
 });
 
 app.listen(3000, () => {
